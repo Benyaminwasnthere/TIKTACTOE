@@ -1,0 +1,5 @@
+all: client
+first: server.c
+	gcc -g -Wall -Werror -fsanitize=address client.c -o client
+clean:
+	rm -rf client
