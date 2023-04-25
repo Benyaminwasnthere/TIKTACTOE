@@ -13,11 +13,43 @@
 typedef struct {
     int playero;
     int playerx;
-    char usernameo[225];
-    char usernamex[225];
+    char usernameo[200];
+    char usernamex[200];
 } Game;
 
 
+int isGameOver(char board[3][3]) {
+    //check for horizontal wins
+    for (int i = 0; i < 3; i++) {
+        if (board[i][0] != '.' && board[i][0] == board[i][1] && board[i][1] == board[i][2]) {
+            return 1;
+        }
+    }
+    //check for vertical wins
+    for (int i = 0; i < 3; i++) {
+        if (board[0][i] != '.' && board[0][i] == board[1][i] && board[1][i] == board[2][i]) {
+            return 1;
+        }
+    }
+    //check for diagonal wins
+    if (board[0][0] != '.' && board[0][0] == board[1][1] && board[1][1] == board[2][2]) {
+        return 1;
+    }
+    if (board[0][2] != '.' && board[0][2] == board[1][1] && board[1][1] == board[2][0]) {
+        return 1;
+    }
+    //check for tie
+    int tie = 1;
+    for (int i = 0; i < 3; i++) {
+        if (board[i][0] == '.' || board[i][1] == '.' || board[i][2] == '.') {
+            tie = 0;
+        }
+    }
+    if (tie == 1) {
+        return 2;
+    }
+    return 0;
+}
 
 //make the gamethread function
 void *gamethread(void *p) {
@@ -27,47 +59,89 @@ void *gamethread(void *p) {
     printf("In game thread...\n");
 
 
-    bzero(buff, buff_MAX);
-    buff[0] = 'X';
-    buff[1] = '|';
-    strcat(buff, game->usernameo);
-    strcat(buff, "|");
-    int length = strlen(buff);
 
+    /********************
+      SEND BEGN COMMANDS
+    *******************/
+    bzero(buff, buff_MAX);
+
+    buff[strlen(game->usernameo) - 1] = '\0';
+    int length = strlen(game->usernameo) +2;
     char command[buff_MAX];
     strcpy(command, "BEGN|");
+    char lengthstr[10];
 
-    while (length > 0) {
-        int digit = length % 10;
-        length = length / 10;
-        char temp[2];
-        sprintf(temp, "%d", digit);
-        strcat(command, temp);
-    }
-    strcat(command, buff);
+    sprintf(lengthstr, "%d", length);
+    strcat(command, lengthstr);
+    strcat(command, "|X|");
+    strcat(command, game->usernameo);
+    command[strlen(command) - 1] = '\0';
+    strcat(command, "|");
+    command[strlen(command)] = '\0';
+    printf("command: %s\n", command);
 
     write(game->playerx, command, sizeof(command));
 
     bzero(buff, buff_MAX);
-    buff[0] = 'O';
-    buff[1] = '|';
-    strcat(buff, game->usernamex);
-    strcat(buff, "|");
-    length = strlen(buff);
+    buff[strlen(game->usernamex) - 1] = '\0';
+    length = strlen(game->usernamex) +2;
 
     strcpy(command, "BEGN|");
-    while (length > 0) {
-        int digit = length % 10;
-        length = length / 10;
-        char temp[2];
-        sprintf(temp, "%d", digit);
-        strcat(command, temp);
-    }
-    strcat(command, buff);
+    sprintf(lengthstr, "%d", length);
+    strcat(command, lengthstr);
+    strcat(command, "|O|");
+    strcat(command, game->usernamex);
+    command[strlen(command) - 1] = '\0';
+    strcat(command, "|");
+    command[strlen(command)] = '\0';
+    printf("command: %s\n", command);
 
     write(game->playero, command, sizeof(command));
 
     int current_player = 0;
+    int gameover = 0;
+    int turn = 0;
+
+    char board[3][3] = {{'.', '.', '.'}, {'.', '.', '.'}, {'.', '.', '.'}};
+
+    /********************
+        MAIN GAME LOOP
+     *******************/
+    while (gameover == 0) {
+        //read the current player's move, starting with x
+        bzero(buff, buff_MAX);
+        if (current_player == 0) {
+            read(game->playerx, buff, sizeof(buff));
+        } else {
+            read(game->playero, buff, sizeof(buff));
+        }
+        //check if the data is correct
+        if (buff[0] == 'M' && buff[1] == 'O' && buff[2] == 'V' && buff[3] == 'E' && buff[4] == '|') {
+            if (buff[5] != 6 || buff[6] != '|') {
+                printf("Invalid command\n");
+                continue;
+            }
+            int x = buff[7] - '0';
+            int y = buff[9] - '0';
+            if (x < 1 || x > 3 || y < 1 || y > 3) {
+                printf("Invalid command\n");
+                continue;
+            }
+            if (board[x - 1][y - 1] != '.') {
+                printf("Invalid command\n");
+                continue;
+            }
+            //if the move is valid, update the board
+            if (current_player == 0) {
+                board[x - 1][y - 1] = 'X';
+            } else {
+                board[x - 1][y - 1] = 'O';
+            }
+            current_player = (current_player + 1) % 2;
+            //check if the game is over
+            gameover = isGameOver(board);
+
+            //send the move to the other player
 
 
 
@@ -75,6 +149,21 @@ void *gamethread(void *p) {
 
 
 
+
+
+
+
+        } else  {
+            //return an error
+
+            printf("Invalid command\n");
+        }
+
+
+
+
+
+    }
 
 
 }
@@ -134,7 +223,7 @@ int server(void* p) {
             close(clientO);
             continue;
         }
-            //read in the next character, which should be a |
+        //read in the next character, which should be a |
         char c;
         read(clientO, &c, 1);
         if (c != '|') {
@@ -162,15 +251,22 @@ int server(void* p) {
         if (flag == 0) {
             clientO_placeholder = clientO;
             strcpy(clientO_username, username);
+            clientO_username[usernameLength] = '\0';
+
             flag = 1;
             printf("Client O added to game: %s\n", username);
         } else {
             clientX_placeholder = clientO;
             strcpy(clientX_username, username);
+            clientX_username[usernameLength] = '\0';
             flag = 0;
             printf("Client X added to game: %s\n", username);
             //create a thread to handle the game
             game = malloc(sizeof(Game));
+            game->playero = clientO_placeholder;
+            game->playerx = clientX_placeholder;
+            strcpy(game->usernameo, clientO_username);
+            strcpy(game->usernamex, clientX_username);
 
             pthread_t gameThread;
             pthread_create(&gameThread, NULL, gamethread, game);

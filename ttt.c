@@ -10,6 +10,8 @@
 #define MAX_BUFFER 225
 #define PORT 8000
 
+char player;
+
 int main() {
     struct sockaddr_in servaddr;
     int sock;
@@ -66,10 +68,14 @@ int main() {
     //wait until the server sends a command that starts with BEGN
     while (strncmp(buff, "BEGN", 4) != 0) {
         bzero(buff, sizeof(buff));
-        read(sock, buff, 4);
-        buff[4] = '\0';
-        printf("%s", buff);
+        read(sock, buff, MAX_BUFFER);
+
+        printf("%s\n", buff);
     }
+
+    player = buff[5];
+    printf("You are player %c\n", player);
+
 
 
 }

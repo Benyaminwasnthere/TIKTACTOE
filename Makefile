@@ -1,6 +1,7 @@
 all: client server
-server: ttts.c
-	gcc -g -w -fsanitize=address ttts.c -o ttts
-client: ttt.c
-	gcc -g -w -fsanitize=address ttt.c -o ttt
+client: client.c
+	gcc -g -Wall -Werror -fsanitize=address client.c -o client
+server: server.c
+	gcc -g -Wall -Werror -fsanitize=address server.c -o server
 clean:
+	rm -rf client server
