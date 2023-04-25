@@ -121,8 +121,16 @@ void *gamethread(void *p) {
                 printf("Invalid command\n");
                 continue;
             }
-            int x = buff[7] - '0';
-            int y = buff[9] - '0';
+            if (buff[7] == 'X' && current_player == 1) {
+                printf("Invalid command\n");
+                continue;
+            } else if (buff[7] == 'O' && current_player == 0) {
+                printf("Invalid command\n");
+                continue;
+            }
+
+            int x = buff[9] - '0';
+            int y = buff[11] - '0';
             if (x < 1 || x > 3 || y < 1 || y > 3) {
                 printf("Invalid command\n");
                 continue;
@@ -131,6 +139,7 @@ void *gamethread(void *p) {
                 printf("Invalid command\n");
                 continue;
             }
+            //MOVE|6|X|1,1|
             //if the move is valid, update the board
             if (current_player == 0) {
                 board[x - 1][y - 1] = 'X';
@@ -142,16 +151,6 @@ void *gamethread(void *p) {
             gameover = isGameOver(board);
 
             //send the move to the other player
-
-
-
-
-
-
-
-
-
-
 
         } else  {
             //return an error
