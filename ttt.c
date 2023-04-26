@@ -188,6 +188,8 @@ int main() {
 
             }
 
+
+
             bzero(buff, sizeof(buff));
             read(sock, buff, MAX_BUFFER);
             //print the board
