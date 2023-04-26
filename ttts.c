@@ -250,10 +250,63 @@ void *gamethread(void *p) {
                 pthread_exit(NULL);
             }
         } else if (buff[0] == 'D' && buff[1] == 'R' && buff[2] == 'A' && buff[3] == 'W' && buff[4] == '|') {
+            if (buff[5] != '2' || buff[6] != '|') {
+                printf("Invalid command (NOT LEN 2)\n");
+                continue;
+            }
+            if (buff[7] != 'S') {
+                printf("Invalid command (Not suggesting a draw)\n");
+                continue;
+            }
+
+            bzero(buff, buff_MAX);
+            strcpy(buff, "DRAW|2|S|");
+            if (current_player == 0) {
+
+                write(game->playero, buff, sizeof(buff));
+            } else {
+                write(game->playerx, buff, sizeof(buff));
+            }
+            bzero(buff, buff_MAX);
+            if (current_player == 0) {
+                read(game->playero, buff, sizeof(buff));
+            } else {
+                read(game->playerx, buff, sizeof(buff));
+            }
+            if (current_player == 0) {
+                read(game->playero, buff, sizeof(buff));
+            } else {
+                read(game->playerx, buff, sizeof(buff));
+            }
+            printf("command: %s\n", buff);
+
+            if (strcmp(buff, "DRAW|2|A|") == 0) {
+                printf("Draw accepted\n");
+                bzero(buff, buff_MAX);
+                strcpy(buff, "OVER|28|D|Game has ended in a draw.|");
+                write(game->playerx, buff, sizeof(buff));
+                write(game->playero, buff, sizeof(buff));
                 //free the game
                 free(game);
                 //close this thread
                 pthread_exit(NULL);
+
+            } else if (strcmp(buff, "DRAW|2|R|") == 0) {
+                printf("Draw denied\n");
+                bzero(buff, buff_MAX);
+                strcpy(buff, "DRAW|2|R|");
+                if (current_player == 0) {
+                    write(game->playerx, buff, sizeof(buff));
+                } else {
+                    write(game->playero, buff, sizeof(buff));
+                }
+                continue;
+            } else {
+                printf("Invalid command (NOT A/D)\n");
+                continue;
+            }
+
+
 
         } else if (buff[0] == 'R' && buff[1] == 'S' && buff[2] == 'G' && buff[3] == 'N' && buff[4] == '|') {
 

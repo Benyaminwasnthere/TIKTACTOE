@@ -120,6 +120,28 @@ int main() {
 
             }
 
+            if (strncmp(buff, "DRAW", 4) == 0) {
+                bzero(buff, sizeof(buff));
+                strcpy(buff, "DRAW|2|S|");
+                write(sock, buff, sizeof(buff));
+
+                bzero(buff, sizeof(buff));
+                read(sock, buff, MAX_BUFFER);
+                printf("Received: %s\n", buff);
+                if (strncmp(buff, "OVER", 4) == 0) {
+                    printf("Draw accepted\n");
+                    printf("The game is a draw!\n");
+                    close(sock);
+                    return 0;
+                } else if (strncmp(buff, "DRAW", 4) == 0) {
+                    if (buff[7] == 'R') {
+                        printf("Draw rejected\n");
+                        continue;
+                    }
+                }
+
+            }
+
             bzero(command, sizeof(command));
             strcpy(command, "MOVE|6|");
             strcat(command, &player);
@@ -189,7 +211,7 @@ int main() {
             printf("It is your opponent's turn\n");
             bzero(buff, sizeof(buff));
             read(sock, buff, 4);
-            if (strncmp(buff, "MOVD", 4) != 0 && strncmp(buff, "OVER", 4) != 0) {
+            if (strncmp(buff, "MOVD", 4) != 0 && strncmp(buff, "OVER", 4) != 0 && strncmp(buff, "DRAWc", 4) != 0) {
                 printf("Invalid data received (NOT MOVD)\n");
                 continue;
             }
@@ -200,6 +222,10 @@ int main() {
                     printf("You won!\n");
                 } else if (buff[4] == 'L') {
                     printf("You lost!\n");
+                } else if (buff[4] == 'D') {
+                    printf("The game is a draw!\n");
+                    close(sock);
+                    return 0;
                 }
                 int i = 6;
                 while (buff[i] != '|') {
@@ -216,7 +242,36 @@ int main() {
                 close(sock);
                 return 0;
             }
+            if (strncmp(buff, "DRAW", 4) == 0) {
+                printf("Your opponent has requested a draw\n");
+                printf("Do you accept? (Y/N): ");
+                read(sock, buff, MAX_BUFFER);
+                bzero(buff, sizeof(buff));
+                fgets(buff, MAX_BUFFER, stdin);
 
+                if (strncmp(buff, "Y", 1) == 0) {
+                    bzero(buff, sizeof(buff));
+                    strcpy(buff, "DRAW|2|A|");
+                    write(sock, buff, sizeof(buff));
+
+                    bzero(buff, sizeof(buff));
+                    read(sock, buff, 4);
+                    printf("Received: %s\n", buff);
+                    if (strncmp(buff, "OVER", 4) == 0) {
+                        printf("Draw accepted\n");
+                        printf("The game is a draw!\n");
+                        close(sock);
+                        return 0;
+                    }
+                } else {
+                    bzero(buff, sizeof(buff));
+                    strcpy(buff, "DRAW|2|R|");
+                    write(sock, buff, sizeof(buff));
+                    continue;
+
+                }
+
+            }
             bzero(buff, sizeof(buff));
             read(sock, buff, MAX_BUFFER);
 
