@@ -117,26 +117,40 @@ void *gamethread(void *p) {
         }
         //check if the data is correct
         if (buff[0] == 'M' && buff[1] == 'O' && buff[2] == 'V' && buff[3] == 'E' && buff[4] == '|') {
-            if (buff[5] != 6 || buff[6] != '|') {
-                printf("Invalid command\n");
+            if (buff[5] != '6' || buff[6] != '|') {
+                printf("Invalid command (NOT LEN 6)\n");
                 continue;
             }
             if (buff[7] == 'X' && current_player == 1) {
-                printf("Invalid command\n");
+                printf("Invalid command (NOT CURR PLAYER)\n");
                 continue;
             } else if (buff[7] == 'O' && current_player == 0) {
-                printf("Invalid command\n");
+                printf("Invalid command (NOT CURR PLAYER)\n");
                 continue;
             }
 
             int x = buff[9] - '0';
             int y = buff[11] - '0';
             if (x < 1 || x > 3 || y < 1 || y > 3) {
-                printf("Invalid command\n");
+                printf("Invalid command (OUT OF BOUNDS)\n");
+                bzero(buff, buff_MAX);
+                strcpy(buff, "INVL|15|Out of Bounds.|");
+                if (current_player == 0) {
+                    write(game->playerx, buff, sizeof(buff));
+                } else {
+                    write(game->playero, buff, sizeof(buff));
+                }
                 continue;
             }
             if (board[x - 1][y - 1] != '.') {
-                printf("Invalid command\n");
+                printf("Invalid command (SPACE OCCUPIED)\n");
+                bzero(buff, buff_MAX);
+                strcpy(buff, "INVL|16|Space Occupied.|");
+                if (current_player == 0) {
+                    write(game->playerx, buff, sizeof(buff));
+                } else {
+                    write(game->playero, buff, sizeof(buff));
+                }
                 continue;
             }
             //MOVE|6|X|1,1|
@@ -146,24 +160,150 @@ void *gamethread(void *p) {
             } else {
                 board[x - 1][y - 1] = 'O';
             }
-            current_player = (current_player + 1) % 2;
             //check if the game is over
             gameover = isGameOver(board);
 
             //send the move to the other player
+            bzero(buff, buff_MAX);
 
+
+            if (gameover == 0) {
+                strcpy(buff, "MOVD|16|");
+                if (current_player == 0) {
+                    strcat(buff, "X|");
+                } else {
+                    strcat(buff, "O|");
+                }
+                char xstr[2];
+                sprintf(xstr, "%d", x);
+                strcat(buff, xstr);
+                strcat(buff, ",");
+                char ystr[2];
+                sprintf(ystr, "%d", y);
+                strcat(buff, ystr);
+                strcat(buff, "|");
+                //strcat the board
+                for (int i = 0; i < 3; i++) {
+                    for (int j = 0; j < 3; j++) {
+                        char c = board[i][j];
+                        char cstr[2];
+                        sprintf(cstr, "%c", c);
+                        strcat(buff, cstr);
+                    }
+                }
+                strcat(buff, "|");
+                printf("command: %s\n", buff);
+
+                write(game->playerx, buff, sizeof(buff));
+                write(game->playero, buff, sizeof(buff));
+
+                current_player = (current_player + 1) % 2;
+
+            } else {
+                //figure out who won
+                bzero(buff, buff_MAX);
+                char winner;
+                if (current_player == 0) {
+                    winner = 'X';
+                } else {
+                    winner = 'O';
+                }
+                char message[220];
+                //send the game over message
+                strcpy(buff, "OVER|");
+                if (winner == 'X') {
+                    strcat(message, game->usernamex);
+                    strcat(message, " wins!");
+                    strcat(message, "|");
+                } else {
+                    strcat(message, game->usernameo);
+                    strcat(message, " wins the game!");
+                    strcat(message, "|");
+                }
+                //get the length of the message
+                int length = strlen(message) + 2;
+                char lengthstr[10];
+                sprintf(lengthstr, "%d", length);
+
+                strcat(buff, lengthstr);
+                strcat(buff, "|W|");
+                strcat(buff, message);
+                if (winner == 'X') {
+                    write(game->playerx, buff, sizeof(buff));
+                } else {
+                    write(game->playero, buff, sizeof(buff));
+                }
+                bzero(buff, buff_MAX);
+                strcpy(buff, "OVER|");
+                strcat(buff, lengthstr);
+                strcat(buff, "|L|");
+                strcat(buff, message);
+                if (winner == 'X') {
+                    write(game->playero, buff, sizeof(buff));
+                } else {
+                    write(game->playerx, buff, sizeof(buff));
+                }
+
+                //free the game
+                free(game);
+                //close this thread
+                pthread_exit(NULL);
+            }
+        } else if (buff[0] == 'D' && buff[1] == 'R' && buff[2] == 'A' && buff[3] == 'W' && buff[4] == '|') {
+                //free the game
+                free(game);
+                //close this thread
+                pthread_exit(NULL);
+
+        } else if (buff[0] == 'R' && buff[1] == 'S' && buff[2] == 'G' && buff[3] == 'N' && buff[4] == '|') {
+
+            bzero(buff, buff_MAX);
+            strcpy(buff, "OVER|");
+            char message[220];
+
+            if (current_player == 0) {
+                strcat(message, game->usernamex);
+                strcat(message, " has resigned!");
+                strcat(message, "|");
+            } else {
+                strcat(message, game->usernameo);
+                strcat(message, " has resigned!");
+                strcat(message, "|");
+            }
+            //get the length of the message
+            int length = strlen(message) + 2;
+            char lengthstr[10];
+            sprintf(lengthstr, "%d", length);
+
+            strcat(buff, lengthstr);
+
+            strcat(buff, "|W|");
+            strcat(buff, message);
+            if (current_player == 0) {
+                write(game->playero, buff, sizeof(buff));
+            } else {
+                write(game->playerx, buff, sizeof(buff));
+            }
+            bzero(buff, buff_MAX);
+            strcpy(buff, "OVER|");
+            strcat(buff, lengthstr);
+            strcat(buff, "|L|");
+            strcat(buff, message);
+            if (current_player == 0) {
+                write(game->playerx, buff, sizeof(buff));
+            } else {
+                write(game->playero, buff, sizeof(buff));
+            }
+
+            //free the game
+            free(game);
+            //close this thread
+            pthread_exit(NULL);
         } else  {
-            //return an error
-
-            printf("Invalid command\n");
+            printf("Invalid command (INVL PRTL)\n");
         }
 
-
-
-
-
     }
-
 
 }
 
@@ -250,6 +390,7 @@ int server(void* p) {
         if (flag == 0) {
             clientO_placeholder = clientO;
             strcpy(clientO_username, username);
+            printf("username length: %d\n", usernameLength);
             clientO_username[usernameLength] = '\0';
 
             flag = 1;
@@ -269,6 +410,16 @@ int server(void* p) {
 
             pthread_t gameThread;
             pthread_create(&gameThread, NULL, gamethread, game);
+
+            //reset all the variables
+            clientO_placeholder = 0;
+            clientX_placeholder = 0;
+            bzero(clientO_username, 225);
+            bzero(clientX_username, 225);
+            clientO = 0;
+            clientX = 0;
+            usernameLength = 0;
+
         }
     }
 }

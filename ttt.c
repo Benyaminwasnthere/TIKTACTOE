@@ -73,8 +73,175 @@ int main() {
         printf("%s\n", buff);
     }
 
-    player = buff[5];
+    player = buff[7];
     printf("You are player %c\n", player);
+
+    char player_turn = 'X';
+
+    //make the main game loop
+    while (1) {
+        if (player == player_turn) {
+            printf("It is your turn\n");
+            printf("Enter your move: ");
+            fgets(buff, MAX_BUFFER, stdin);
+            buff[strlen(buff) - 1] = '\0';
+
+            //check if the move is "RSGN"
+            if (strncmp(buff, "RSGN", 4) == 0) {
+                strcat(buff, "|0|");
+                printf("Sending command: %s\n", buff);
+                write(sock, buff, sizeof(buff));
+
+                bzero(buff, sizeof(buff));
+                read(sock, buff, 4);
+                printf("Received: %s\n", buff);
+
+                if (strncmp(buff, "OVER", 4) == 0) {
+                    read(sock, buff, MAX_BUFFER);
+                    if (buff[4] == 'W') {
+                        printf("You won!\n");
+                    } else if (buff[4] == 'L') {
+                        printf("You lost!\n");
+                    }
+                    int i = 6;
+                    while (buff[i] != '|') {
+                        if (buff[i] == '\n' || buff[i] == '\0') {
+                            i++;
+                            continue;
+                        }
+                        printf("%c", buff[i]);
+                        i++;
+                    }
+                    printf("\n");
+                }
+
+                close(sock);
+                return 0;
+
+            }
+
+            bzero(command, sizeof(command));
+            strcpy(command, "MOVE|6|");
+            strcat(command, &player);
+            strcat(command, "|");
+            strcat(command, buff);
+            strcat(command, "|");
+            printf("Sending command: %s\n", command);
+            write(sock, command, sizeof(command));
+
+            bzero(buff, sizeof(buff));
+            read(sock, buff, 4);
+            printf("Received: %s\n", buff);
+
+            if (strncmp(buff, "INVL", 4) == 0) {
+                printf("Invalid move....\n");
+                read(sock, buff, MAX_BUFFER);
+                continue;
+            }
+            if (strncmp(buff, "MOVD", 4) == 0) {
+                printf("Move successful\n");
+            }
+            if (strncmp(buff, "OVER", 4) == 0) {
+
+                read(sock, buff, MAX_BUFFER);
+                if (buff[4] == 'W') {
+                    printf("You won!\n");
+                } else if (buff[4] == 'L') {
+                    printf("You lost!\n");
+                }
+                int i = 6;
+                while (buff[i] != '|') {
+                    if (buff[i] == '\n' || buff[i] == '\0') {
+                        i++;
+                        continue;
+                    }
+                    printf("%c", buff[i]);
+                    i++;
+                }
+                printf("\n");
+
+                //end the connection
+                close(sock);
+                return 0;
+
+            }
+
+            bzero(buff, sizeof(buff));
+            read(sock, buff, MAX_BUFFER);
+            //print the board
+            int i = 10;
+            printf("The board is now:\n");
+            for (int j = 0; j < 3; j++) {
+                printf("%d ", j);
+                for (int k = 0; k < 3; k++) {
+                    printf("%c ", buff[i]);
+                    i++;
+                }
+                printf("\n");
+            }
+
+            if (player_turn == 'X') {
+                player_turn = 'O';
+            } else {
+                player_turn = 'X';
+            }
+        } else {
+            printf("It is your opponent's turn\n");
+            bzero(buff, sizeof(buff));
+            read(sock, buff, 4);
+            if (strncmp(buff, "MOVD", 4) != 0 && strncmp(buff, "OVER", 4) != 0) {
+                printf("Invalid data received (NOT MOVD)\n");
+                continue;
+            }
+            if (strncmp(buff, "OVER", 4) == 0) {
+                bzero(buff, sizeof(buff));
+                read(sock, buff, MAX_BUFFER);
+                if (buff[4] == 'W') {
+                    printf("You won!\n");
+                } else if (buff[4] == 'L') {
+                    printf("You lost!\n");
+                }
+                int i = 6;
+                while (buff[i] != '|') {
+                    if (buff[i] == '\n' || buff[i] == '\0') {
+                        i++;
+                        continue;
+                    }
+                    printf("%c", buff[i]);
+                    i++;
+                }
+                printf("\n");
+
+                //end the connection
+                close(sock);
+                return 0;
+            }
+
+            bzero(buff, sizeof(buff));
+            read(sock, buff, MAX_BUFFER);
+
+            int i = 10;
+            //print the board
+            printf("Your opponent played:\n");
+            for (int j = 0; j < 3; j++) {
+                printf("%d ", j);
+                for (int k = 0; k < 3; k++) {
+                    printf("%c ", buff[i]);
+                    i++;
+                }
+                printf("\n");
+            }
+
+            if (player_turn == 'X') {
+                player_turn = 'O';
+            } else {
+                player_turn = 'X';
+            }
+
+
+        }
+
+    }
 
 
 
